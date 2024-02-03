@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Floating label for ElementUI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.5.3/dist/index.min.css" />
+</head>
+<style>
+  body {
+    font-family: Arial;
+  }
+
+  .ui-row {
+    display: flex;
+  }
+
+  .ui-box {
+    border: 2px solid #ddd;
+    background: #ccf1;
+    border-radius: 10px;
+    margin: 10px 8px 20px 0;
+    height: fit-content;
+  }
+
+  .ui-box:hover {
+    border: 2px solid #ccc;
+  }
+
+  .ui-box:focus-within {
+    border: 2px solid #409eff;
+  }
+
+  .ui-box.error {
+    border: 2px solid orangered;
+    background: #f001;
+  }
+
+  .ui-box.error::after {
+    content: 'This field is required';
+    font-size: 13px;
+    margin-left: 8px;
+    color: orangered;
+    display: block;
+    position: absolute;
+    font-family: sans-serif;
+  }
+
+  .ui-fit-content {
+    width: fit-content;
+  }
+
+  .ui-label {
+    color: #888;
+    font-size: 14px;
+    margin-left: 12px;
+  }
+
+  .ui-box.required .ui-label:after {
+    content: " *";
+    color: orangered;
+  }
+
+  .ui-box .el-input__wrapper,
+  .ui-box .el-select__wrapper,
+  .ui-box textarea {
+    box-shadow: none !important;
+    background-color: #0000 !important;
+    font-size: 16px;
+  }
+  
+  #app {
+    width: max-content;
+    margin: 0 auto;
+  }
+</style>
+
+<body>
+  <div id="app">
+    <p>Example of a floating label for various controls.<br>Example of dynamic validation using the 'required' prop.</p>
+    <details>
+      <summary>Example of controls without label</summary>
+      <ui-row>
+        <ui-input v-model="model.name" width="200" placeholder="Name" clearable></ui-input>
+        <ui-date v-model="model.birthday" width="200" placeholder="Birth day"></ui-date>
+      </ui-row>
+    </details>
+
+    <ui-form form-id="userForm" @submit="onSubmit">
+      <ui-row>
+        <ui-input v-model="model.name" label="Name" width="200" required clearable autofocus></ui-input>
+        <ui-input v-model="model.nickname" label="Nickname" width="200" required></ui-input>
+      </ui-row>
+      <ui-select v-model="model.lang" label="Language" required
+                 :options="langs" width="300" clearable multiple></ui-select>
+      <ui-select v-model="model.country" label="Country" required :options="countries" width="300"></ui-select>
+      <ui-date v-model="model.birthday" label="Birth day" width="300" required></ui-date>
+      <ui-textarea v-model="model.about" label="About" rows="2" width="300"></ui-textarea>
+      <ui-number v-model="model.weight" label="Weight (kg)" width="150" required></ui-number>
+    </ui-form>
+    
+    <details>
+      <summary>Model values:</summary>
+      <pre>{{model}}</pre>
+    </details>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2.5.3/dist/index.full.min.js"></script>
+
+  <script type="module">
+    const { createApp, ref, reactive } = Vue
+
+    const app = createApp({
+      setup() {
+        const model = reactive({ name: '', nickname: '', lang: '', country: '', birthday: '', about: '', weight: null })
+
+        const langs = [
+          { label: 'French', value: 'fr' },
+          { label: 'English', value: 'en' },
+          { label: 'Chinese', value: 'cn' },
+        ]
+        const countries = ['France', 'USA', 'China']
+
+        function onSubmit() {
+          alert('Submit!\n' + JSON.stringify(model, null, 2))
+        }
+
+        return { model, langs, countries, onSubmit }
+      }
+    })
+
+    const model = {
+      get() {
+        return this.modelValue
+      },
+      set(value) {
+        this.$emit('update:modelValue', value)
+      }
+    }
+
+    //todo: not works in components
+    const calcWidth = (width) => !isNaN(+width) ? width + 'px' : width
+
+    const UiForm = {
+      template: `
+          <div :id="formId">
+            <slot></slot>
+            <el-button @click="onSubmit">Submit</el-button>
+          </div>
+		  `,
+      props: {
+        formId: { type: String, required: true }
+      },
+      emits: ['submit'],
+      methods: {
+        onSubmit() {
+          document.querySelectorAll(`#${this.formId} .ui-box.required`)
+            .forEach(el => el.classList.remove('error'))
+
+          const element = document.querySelector(`#${this.formId} .ui-box.required:not(.filled)`)
+          if (element) return element.classList.add('error')
+
+          this.$emit('submit')
+        }
+      }
+    }
+
+    const UiRow = {
+      template: `
+          <div class="ui-row">
+            <slot></slot>
+          </div>
+		  `,
+    }
+
+    const UiBox = {
+      template: `
+          <div class="ui-box" :class="{required, filled}"
+               :style="{width: !isNaN(+width) ? width + 'px' : width}">
+            <label v-if="label" class="ui-label">{{ label }}</label>
+            <br v-if="label">
+            <slot></slot>
+          </div>
+		  `,
+      props: {
+        label: String,
+        required: Boolean,
+        modelValue: { type: [String, Date, Number, Object, Array] },
+        width: { type: String, default: 'auto' }, // examples: 500, 20%,
+      },
+      computed: {
+        filled() {
+          if (Array.isArray(this.modelValue))
+            return this.modelValue.length > 0
+          if (typeof this.modelValue === 'string')
+            return this.modelValue.trim() !== ''
+          return ![null, undefined].includes(this.modelValue)
+        }
+      }
+    }
+
+    const UiInput = {
+      template: `
+          <ui-box :label :required :width :modelValue>
+            <el-input v-model="model" v-bind="$attrs"/>
+          </ui-box>
+		  `,
+      inheritAttrs: false,
+      props: {
+        modelValue: String,
+        label: String,
+        required: Boolean,
+        width: String,
+      },
+      emits: ['update:modelValue'],
+      computed: { model }
+    }
+
+    const UiNumber = {
+      template: `
+          <ui-box :label :required :width :modelValue>
+            <el-input v-model.number="model" v-bind="$attrs" type="number"/>
+          </ui-box>
+		  `,
+      inheritAttrs: false,
+      props: {
+        modelValue: Number,
+        label: String,
+        required: Boolean,
+        width: String,
+      },
+      emits: ['update:modelValue'],
+      computed: { model }
+    }
+
+    const UiTextarea = {
+      template: `
+          <ui-box :label :required :width :modelValue>
+            <el-input v-model="model" type="textarea" v-bind="$attrs"/>
+          </ui-box>
+		  `,
+      inheritAttrs: false,
+      props: {
+        modelValue: String,
+        label: String,
+        required: Boolean,
+        width: String,
+      },
+      emits: ['update:modelValue'],
+      computed: { model }
+    }
+
+    const UiDate = {
+      template: `
+          <ui-box :label :required width="fit-content" :modelValue>
+            <el-date-picker v-model="model" v-bind="$attrs"
+                            :style="{width: !isNaN(+width) ? width + 'px' : width}"/>
+          </ui-box>
+		  `,
+      inheritAttrs: false,
+      props: {
+        modelValue: { type: [String, Date] },
+        label: String,
+        required: Boolean,
+        width: String,
+      },
+      emits: ['update:modelValue'],
+      computed: { model }
+    }
+
+    const UiSelect = {
+      template: `
+          <ui-box :label :required :width :modelValue>
+            <el-select v-model="model" v-bind="$attrs">
+              <el-option v-for="{label, value} in opts"
+                         :key="value" :label="label" :value="value"/>
+            </el-select>
+          </ui-box>
+		  `,
+      inheritAttrs: false,
+      props: {
+        modelValue: { type: [String, Array] },
+        label: String,
+        required: Boolean,
+        options: Array,
+        width: String,
+      },
+      emits: ['update:modelValue'],
+      computed: { model,
+      	opts() {
+	        return (typeof this.options[0] === 'string')
+            ? this.options.map(el => ({label: el, value: el}))
+            : this.options
+        }
+      }
+    }
+
+    const components = { UiForm, UiRow, UiBox, UiInput, UiNumber, UiTextarea, UiDate, UiSelect }
+
+    for (const componentName in components)
+      app.component(componentName, components[componentName])
+
+    app.use(ElementPlus).mount('#app')
+  </script>
+</body>
+
+</html>
