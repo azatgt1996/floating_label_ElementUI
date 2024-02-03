@@ -1,4 +1,4 @@
-# Simple CRUD example using Vue3 and Quasar
+# Example of a floating label for various controls
 
 # Demo
-<img alt="demo" src="./demo/demo.gif"/>
+<img alt="demo" src="./demo.png"/>
